@@ -4,9 +4,9 @@ div#regex-options {
     background-color: #eeeeee;
     border-radius: 3px;
     padding: 3px;
-    margin-bottom: 3px;
 }
 
+table#extension-options-table,
 table#regex-options-table {
     width: 100%;
     padding: 5px;
@@ -22,7 +22,7 @@ span.options-group-header {
 td.options-table-toggle-cell {
     width: 32px;
     height: 17px;
-    padding: 0px;
+    padding: 0;
 }
 
 img.information-hover-icon {

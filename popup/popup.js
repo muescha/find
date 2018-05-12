@@ -5,7 +5,7 @@ window.browser = (function () {
 })();
 
 var port = browser.runtime.connect({name: 'popup_to_backend_port'});
-var options = {'find_by_regex': true, 'match_case': true, 'persistent_highlights': false, 'max_results': 0};
+var options = {'popup_iframe': true,'find_by_regex': true, 'match_case': true, 'persistent_highlights': false, 'max_results': 0};
 var initialized = false;
 var index = 0;
 
@@ -16,6 +16,7 @@ window.onload = function addListeners() {
     document.getElementById('close-button').addEventListener('click', closeExtension);
     document.getElementById('search-field').addEventListener('input', updateHighlight);
     document.getElementById('search-field').addEventListener('input', updateSavedPreviousSearch);
+    document.getElementById('extension-option-popup-as-iframe-toggle').addEventListener('change', updateOptions);
     document.getElementById('regex-option-regex-disable-toggle').addEventListener('change', updateOptions);
     document.getElementById('regex-option-case-insensitive-toggle').addEventListener('change', updateOptions);
     document.getElementById('regex-option-persistent-highlights-toggle').addEventListener('change', updateOptions);
@@ -60,7 +61,7 @@ window.onload = function addListeners() {
         toggleOptionsPane();
     }, true);
 
-    browser.tabs.query({'active': true, currentWindow: true}, function (tabs) {
+    browser.tabs.query({active: true, currentWindow: true}, function (tabs) {
         function getSelectedOrLastSearch() {
             browser.tabs.executeScript({code: "window.getSelection().toString();"}, function(selection) {
                 if(selection[0]) {
@@ -102,15 +103,15 @@ window.onload = function addListeners() {
 };
 
 //Listen for messages from the background script
-port.onMessage.addListener(function listener(response) {
-    switch(response.action) {
+port.onMessage.addListener(function listener(message) {
+    switch(message.action) {
         case 'index_update':
-            updateIndexText(response.index, response.total);
-            index = response.index;
+            updateIndexText(message.index, message.total);
+            index = message.index;
 
             //Enable buttons only if occurrence exists
-            enableButtons(response.total != 0);
-            enableReplaceButtons(response.total != 0);
+            enableButtons(message.total != 0);
+            enableReplaceButtons(message.total != 0);
 
             showMalformedRegexIcon(false);
             break;
@@ -118,7 +119,7 @@ port.onMessage.addListener(function listener(response) {
             updateHighlight();
             break;
         case 'install':
-            installedOrUpdated(response.details);
+            installedOrUpdated(message.details);
             break;
         case 'close':
             closeExtension();
@@ -126,7 +127,7 @@ port.onMessage.addListener(function listener(response) {
         case 'empty_regex':
         case 'invalid_regex':
         default:
-            showMalformedRegexIcon(response.action == 'invalid_regex');
+            showMalformedRegexIcon(message.action == 'invalid_regex');
             enableButtons(false);
             enableReplaceButtons(false);
             updateIndexText();
@@ -189,7 +190,10 @@ function followLinkUnderFocus() {
 //Close the extension
 function closeExtension() {
     port.disconnect();
-    window.close();
+
+    //If popup in iframe, popup is closed through the disconnection of port
+    if(!options.popup_iframe)
+        window.close();
 }
 
 //Commit options in memory to local storage
@@ -227,6 +231,7 @@ function retrieveSavedOptions() {
 
         options = data.options;
 
+        document.getElementById('extension-option-popup-as-iframe-toggle').checked = options.popup_iframe;
         document.getElementById('regex-option-regex-disable-toggle').checked = options.find_by_regex;
         document.getElementById('regex-option-case-insensitive-toggle').checked = options.match_case;
         document.getElementById('regex-option-persistent-highlights-toggle').checked = options.persistent_highlights;
@@ -243,6 +248,7 @@ function retrieveSavedOptions() {
 
 //Update options in memory with data from options panel
 function updateOptions() {
+    options.popup_iframe = document.getElementById('extension-option-popup-as-iframe-toggle').checked;
     options.find_by_regex = document.getElementById('regex-option-regex-disable-toggle').checked;
     options.match_case = document.getElementById('regex-option-case-insensitive-toggle').checked;
     options.persistent_highlights = document.getElementById('regex-option-persistent-highlights-toggle').checked;
@@ -277,6 +283,9 @@ function toggleOptionsPane() {
         el.style.display = 'inherit';
     else
         el.style.display = 'none';
+
+    if(options.popup_iframe)
+        port.postMessage({action: 'resize', dimensions: {height: document.body.scrollHeight, width: document.body.scrollWidth}, options: options});
 }
 
 //Toggle Replace Pane
@@ -296,6 +305,9 @@ function toggleReplacePane() {
         el.style.display = 'inherit';
     else
         el.style.display = 'none';
+
+    if(options.popup_iframe)
+        port.postMessage({action: 'resize', dimensions: {height: document.body.scrollHeight, width: document.body.scrollWidth}, options: options});
 }
 
 //Show or hide red exclamation icon in the extension popup

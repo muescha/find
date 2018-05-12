@@ -4,6 +4,15 @@ window.browser = (function () {
     return window.chrome || window.browser;
 })();
 
+window.onload = function addListeners() {
+    document.body.addEventListener('keyup', function (e) {
+        if (e.ctrlKey && e.shiftKey && e.keyCode == 186)
+            createPopup();
+        else if (e.keyCode == 27)
+            closePopup();
+    });
+};
+
 browser.runtime.onMessage.addListener(function(message, sender, sendResponse) {
     switch(message.action) {
         case 'init':
@@ -11,7 +20,11 @@ browser.runtime.onMessage.addListener(function(message, sender, sendResponse) {
             break;
         case 'restore':
             sendResponse({success: restoreWebPage(message.uuids)});
+            if(message.options.popup_iframe)
+                closePopup();
             break;
+        case 'resize':
+            resizePopup(message.dimensions);
         case 'update':
         case 'poll':
             sendResponse({success: true});
@@ -22,6 +35,33 @@ browser.runtime.onMessage.addListener(function(message, sender, sendResponse) {
 
     return true;
 });
+
+//Remove popup iframe and its parent div
+function closePopup() {
+    var popup = document.getElementById('find-ext-iframe');
+    popup.parentElement.removeChild(popup);
+}
+
+//Create popup iframe with a parent div
+function createPopup() {
+    var wrapper = document.createElement('div');
+    wrapper.setAttribute('id', 'find-ext-iframe-wrapper');
+
+    var iframe = document.createElement('iframe');
+    iframe.setAttribute('id', 'find-ext-iframe');
+    iframe.src = chrome.extension.getURL('popup/popup.html');
+    iframe.setAttribute('scrolling', 'no');
+
+    wrapper.appendChild(iframe);
+    document.body.appendChild(wrapper);
+}
+
+function resizePopup(dimensions) {
+    var wrapper = document.getElementById('find-ext-iframe-wrapper');
+    var popup = document.getElementById('find-ext-iframe');
+    popup.style.height = wrapper.style.height = dimensions.height + 'px';
+    popup.style.width = wrapper.style.width = dimensions.width + 'px';
+}
 
 //Build DOM Model Object, inject UUID references
 function buildDOMReferenceObject() {

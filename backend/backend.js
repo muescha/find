@@ -1,4 +1,4 @@
-"use strict";
+'use strict';
 
 window.browser = (function () {
     return window.chrome || window.browser;
@@ -58,7 +58,7 @@ browser.runtime.onConnect.addListener(function(port) {
                 browser.tabs.sendMessage(tabs[0].id, {action: 'highlight_restore'});
 
             var uuids = getUUIDsFromModelObject(DOMModelObject);
-            browser.tabs.sendMessage(tabs[0].id, {action: 'restore', uuids: uuids});
+            browser.tabs.sendMessage(tabs[0].id, {action: 'restore', uuids: uuids, options: options});
 
             DOMModelObject = null;
             regexOccurrenceMap = null;
@@ -156,6 +156,8 @@ function invokeAction(action, port, tabID, message) {
         replaceAll(port, tabID, message);
     else if(action == 'follow_link')
         followLinkUnderFocus(port, tabID);
+    else if(action == 'resize')
+        resize(port, tabID, message);
 }
 
 //Action Update
@@ -170,11 +172,11 @@ function actionUpdate(port, tabID, message) {
 
             //If searching by string, escape all regex metacharacters
             if(!options.find_by_regex)
-                regex = regex.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, "\\$&");
+                regex = regex.replace(/[\-\[\]\/\{\}\(\)\*\+\?\.\\\^\$\|]/g, '\\$&');
 
             //Ensure non-empty search
             if(regex.length == 0) {
-                port.postMessage({action: "empty_regex"});
+                port.postMessage({action: 'empty_regex'});
                 browser.tabs.sendMessage(tabID, {action: 'highlight_restore'});
                 return;
             }
@@ -204,11 +206,11 @@ function actionUpdate(port, tabID, message) {
             if(options.max_results != 0 && options.max_results <= regexOccurrenceMap.length)
                 viewableTotal = options.max_results;
 
-            port.postMessage({action: "index_update", index: viewableIndex, total: viewableTotal});
+            port.postMessage({action: 'index_update', index: viewableIndex, total: viewableTotal});
         }
         catch(e) {
             console.error(e);
-            port.postMessage({action: "invalid_regex", error: e.message});
+            port.postMessage({action: 'invalid_regex', error: e.message});
         }
     });
 }
@@ -228,7 +230,7 @@ function actionNext(port, tabID, message) {
     browser.tabs.sendMessage(tabID, {action: 'highlight_seek', occurrenceMap: regexOccurrenceMap, index: index, regex: regex});
     var viewableIndex = regexOccurrenceMap.length == 0 ? 0 : index+1;
     var viewableTotal = ((indexCap && options.max_results <= regexOccurrenceMap.length) ? options.max_results : regexOccurrenceMap.length);
-    port.postMessage({action: "index_update", index: viewableIndex, total: viewableTotal});
+    port.postMessage({action: 'index_update', index: viewableIndex, total: viewableTotal});
 }
 
 //Action Previous
@@ -250,7 +252,7 @@ function actionPrevious(port, tabID, message) {
     browser.tabs.sendMessage(tabID, {action: 'highlight_seek', occurrenceMap: regexOccurrenceMap, index: index, regex: regex});
     var viewableIndex = regexOccurrenceMap.length == 0 ? 0 : index+1;
     var viewableTotal = ((indexCap && options.max_results <= regexOccurrenceMap.length) ? options.max_results : regexOccurrenceMap.length);
-    port.postMessage({action: "index_update", index: viewableIndex, total: viewableTotal});
+    port.postMessage({action: 'index_update', index: viewableIndex, total: viewableTotal});
 }
 
 function replaceNext(port, tabID, message) {
@@ -290,6 +292,10 @@ function replaceAll(port, tabID, message) {
 function followLinkUnderFocus(port, tabID) {
     browser.tabs.sendMessage(tabID, {action: 'follow_link'});
     port.postMessage({action: 'close'});
+}
+
+function resize(port, tabID, message) {
+    browser.tabs.sendMessage(tabID, {action: 'resize', dimensions: message.dimensions});
 }
 
 //Build occurrence map from DOM model and regex

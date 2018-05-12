@@ -34,7 +34,8 @@
       "js": ["/lib/html-entity-handler/entityhandler.js",
         "/content/content.js",
         "/content/highlighter.js"],
-      "css": ["/content/highlighter.css"]
+      "css": ["/content/popupiframe.css",
+        "/content/highlighter.css"]
     }
   ],
   "omnibox": { "keyword" : "find" },
@@ -46,5 +47,9 @@
       }
     }
   },
-  "offline_enabled": true
+  "offline_enabled": true,
+  "web_accessible_resources": [
+    "popup/*",
+    "resources/*"
+  ]
 }
